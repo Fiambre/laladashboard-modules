@@ -11,6 +11,17 @@
       "wasm_url": "https://raw.githubusercontent.com/Fiambre/laladashboard-modules/main/example-hello/widget.wasm",
       "manifest_url": "https://raw.githubusercontent.com/Fiambre/laladashboard-modules/main/example-hello/manifest.json",
       "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/example-hello"
+    },
+    {
+      "id": "node-exporter",
+      "name": "Node Exporter",
+      "description": "Muestra CPU load, RAM y uptime de servidores con Prometheus node_exporter. Indica OFFLINE si no responde.",
+      "author": "Fiambre",
+      "version": "1.0.0",
+      "tags": ["monitoring", "prometheus", "infrastructure"],
+      "wasm_url": "https://raw.githubusercontent.com/Fiambre/laladashboard-modules/main/node-exporter/widget.wasm",
+      "manifest_url": "https://raw.githubusercontent.com/Fiambre/laladashboard-modules/main/node-exporter/manifest.json",
+      "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/node-exporter"
     }
   ]
 }

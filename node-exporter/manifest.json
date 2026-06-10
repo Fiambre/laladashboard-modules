@@ -1,0 +1,10 @@
+{
+  "id": "node-exporter",
+  "name": "Node Exporter",
+  "version": "1.0.0",
+  "author": "Fiambre",
+  "description": "Muestra CPU load, RAM y uptime de servidores con node_exporter. Indica OFFLINE si no responde.",
+  "wasm": "widget.wasm",
+  "min_core_version": "1.0.0",
+  "tags": ["monitoring", "prometheus", "infrastructure"]
+}
