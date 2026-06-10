@@ -8,8 +8,8 @@
       "author": "Fiambre",
       "version": "1.0.0",
       "tags": ["example"],
-      "wasm_url": "https://raw.githubusercontent.com/Fiambre/laladashboard-modules/main/example-hello/widget.wasm",
-      "manifest_url": "https://raw.githubusercontent.com/Fiambre/laladashboard-modules/main/example-hello/manifest.json",
+      "wasm_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/example-hello/widget.wasm",
+      "manifest_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/example-hello/manifest.json",
       "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/example-hello"
     },
     {
@@ -19,8 +19,8 @@
       "author": "Fiambre",
       "version": "1.0.0",
       "tags": ["monitoring", "prometheus", "infrastructure"],
-      "wasm_url": "https://raw.githubusercontent.com/Fiambre/laladashboard-modules/main/node-exporter/widget.wasm",
-      "manifest_url": "https://raw.githubusercontent.com/Fiambre/laladashboard-modules/main/node-exporter/manifest.json",
+      "wasm_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/node-exporter/widget.wasm",
+      "manifest_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/node-exporter/manifest.json",
       "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/node-exporter"
     }
   ]
