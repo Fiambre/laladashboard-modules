@@ -1,0 +1,10 @@
+{
+  "id": "example-hello",
+  "name": "Hello World",
+  "version": "1.0.0",
+  "author": "Fiambre",
+  "description": "Módulo de ejemplo — muestra un mensaje configurable",
+  "wasm": "widget.wasm",
+  "min_core_version": "1.0.0",
+  "tags": ["example", "hello"]
+}

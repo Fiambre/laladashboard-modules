@@ -1,0 +1,16 @@
+{
+  "version": "1",
+  "modules": [
+    {
+      "id": "example-hello",
+      "name": "Hello World",
+      "description": "Módulo de ejemplo — muestra un mensaje configurable en el dashboard",
+      "author": "Fiambre",
+      "version": "1.0.0",
+      "tags": ["example"],
+      "wasm_url": "https://raw.githubusercontent.com/Fiambre/laladashboard-modules/main/example-hello/widget.wasm",
+      "manifest_url": "https://raw.githubusercontent.com/Fiambre/laladashboard-modules/main/example-hello/manifest.json",
+      "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/example-hello"
+    }
+  ]
+}
