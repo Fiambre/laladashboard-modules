@@ -22,6 +22,28 @@
       "wasm_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/node-exporter/widget.wasm",
       "manifest_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/node-exporter/manifest.json",
       "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/node-exporter"
+    },
+    {
+      "id": "github-actions",
+      "name": "GitHub Actions",
+      "description": "Estado del último CI run de múltiples repos en una sola request GraphQL",
+      "author": "Fiambre",
+      "version": "1.0.0",
+      "tags": ["ci", "github", "devops"],
+      "wasm_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/github-actions/widget.wasm",
+      "manifest_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/github-actions/manifest.json",
+      "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/github-actions"
+    },
+    {
+      "id": "server-monitor",
+      "name": "Server Monitor",
+      "description": "Latencia y disponibilidad de URLs HTTP con semáforo visual",
+      "author": "Fiambre",
+      "version": "1.0.0",
+      "tags": ["monitoring", "http", "infrastructure"],
+      "wasm_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/server-monitor/widget.wasm",
+      "manifest_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/server-monitor/manifest.json",
+      "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/server-monitor"
     }
   ]
 }

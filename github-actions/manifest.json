@@ -1,0 +1,10 @@
+{
+  "id": "github-actions",
+  "name": "GitHub Actions",
+  "version": "1.0.0",
+  "author": "Fiambre",
+  "description": "Estado del último CI run de múltiples repos en una sola request GraphQL",
+  "wasm": "widget.wasm",
+  "min_core_version": "1.0.0",
+  "tags": ["ci", "github", "devops"]
+}

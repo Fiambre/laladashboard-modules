@@ -1,0 +1,10 @@
+{
+  "id": "server-monitor",
+  "name": "Server Monitor",
+  "version": "1.0.0",
+  "author": "Fiambre",
+  "description": "Latencia y disponibilidad de URLs HTTP con semáforo visual",
+  "wasm": "widget.wasm",
+  "min_core_version": "1.0.0",
+  "tags": ["monitoring", "http", "infrastructure"]
+}
