@@ -6,5 +6,10 @@
   "description": "Estado del último CI run de múltiples repos en una sola request GraphQL",
   "wasm": "widget.wasm",
   "min_core_version": "1.0.0",
-  "tags": ["ci", "github", "devops"]
+  "tags": ["ci", "github", "devops"],
+  "schema": [
+    {"key": "github_token", "label": "GitHub Token (PAT)", "type": "text", "required": true, "default": "", "placeholder": "ghp_..."},
+    {"key": "repos", "label": "Repositorios (owner/repo, uno por línea)", "type": "textarea", "required": true, "default": "", "placeholder": "Fiambre/laladashboard\nSelknam-Tech/Libra"},
+    {"key": "poll_seconds", "label": "Intervalo (segundos)", "type": "number", "default": "300"}
+  ]
 }

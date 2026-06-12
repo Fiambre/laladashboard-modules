@@ -1,8 +1,7 @@
 //go:build wasip1
 
 // Node Exporter module for LalaDashboard.
-// Fetches Prometheus metrics from one or more node_exporter instances and
-// renders CPU load, RAM, and uptime — or "OFFLINE" if unreachable.
+// Reads config JSON from stdin, writes rendered HTML to stdout.
 //
 // Compile: GOOS=wasip1 GOARCH=wasm go build -o widget.wasm .
 package main
@@ -10,35 +9,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 	"unsafe"
 )
-
-func main() {}
-
-// ---- WASM memory protocol -----------------------------------------------
-
-var outBuf [2 << 20]byte // 2 MB output buffer
-var outLen int32
-
-func setOutput(s string) {
-	n := copy(outBuf[:], s)
-	outLen = int32(n)
-}
-
-//go:wasmexport get_output_ptr
-func getOutputPtr() int32 { return int32(uintptr(unsafe.Pointer(&outBuf[0]))) }
-
-//go:wasmexport get_output_len
-func getOutputLen() int32 { return outLen }
-
-//go:wasmexport alloc
-func alloc(size uint32) uint32 {
-	b := make([]byte, size)
-	return uint32(uintptr(unsafe.Pointer(&b[0])))
-}
 
 // ---- host functions -------------------------------------------------------
 
@@ -63,28 +39,8 @@ func httpGet(url string) (string, bool) {
 	return string(httpBuf[:n]), true
 }
 
-// ---- module metadata ------------------------------------------------------
-
-//go:wasmexport module_name
-func moduleName() int32 {
-	setOutput("Node Exporter")
-	return 0
-}
-
-//go:wasmexport config_schema
-func configSchema() int32 {
-	setOutput(`[
-  {"key":"servers","label":"Servidores (nombre|url separados por coma)","type":"text","required":true,
-   "default":"mi-servidor|http://localhost:9100",
-   "placeholder":"web1|http://192.168.1.10:9100,db1|http://192.168.1.11:9100"},
-  {"key":"poll_seconds","label":"Intervalo (segundos)","type":"number","default":"30"}
-]`)
-	return 0
-}
-
 // ---- Prometheus text format parser ----------------------------------------
 
-// parseScalar finds the value of a bare (label-free) metric in Prometheus text format.
 func parseScalar(body, name string) (float64, bool) {
 	needle := name + " "
 	for _, line := range strings.Split(body, "\n") {
@@ -157,17 +113,11 @@ func esc(s string) string {
 	return s
 }
 
-// ---- render ---------------------------------------------------------------
+// ---- main -----------------------------------------------------------------
 
-//go:wasmexport render
-func render(cfgPtr, cfgLen uint32) int32 {
-	cfgBytes := make([]byte, cfgLen)
-	for i := uint32(0); i < cfgLen; i++ {
-		cfgBytes[i] = *(*byte)(unsafe.Pointer(uintptr(cfgPtr) + uintptr(i)))
-	}
-
+func main() {
 	var settings map[string]string
-	json.Unmarshal(cfgBytes, &settings)
+	json.NewDecoder(os.Stdin).Decode(&settings)
 
 	serversRaw := settings["servers"]
 	if serversRaw == "" {
@@ -187,8 +137,8 @@ func render(cfgPtr, cfgLen uint32) int32 {
 		}
 	}
 	if len(servers) == 0 {
-		setOutput(`<div class="ne-empty">Sin servidores configurados</div>` + neCSS)
-		return 0
+		fmt.Print(`<div class="ne-empty">Sin servidores configurados</div>` + neCSS)
+		return
 	}
 
 	now := float64(time.Now().Unix())
@@ -259,13 +209,12 @@ func render(cfgPtr, cfgLen uint32) int32 {
 			}
 		}
 
-		sb.WriteString(`</div></div>`) // ne-stats, ne-srv
+		sb.WriteString(`</div></div>`)
 	}
 
 	sb.WriteString(`</div>`)
 	sb.WriteString(neCSS)
-	setOutput(sb.String())
-	return 0
+	fmt.Print(sb.String())
 }
 
 const neCSS = `<style>

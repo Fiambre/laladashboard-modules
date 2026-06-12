@@ -1,7 +1,7 @@
 //go:build wasip1
 
 // GitHub Actions status module for LalaDashboard.
-// Fetches the latest CI run for multiple repos in a single GraphQL request.
+// Reads config JSON from stdin, writes rendered HTML to stdout.
 //
 // Compile: GOOS=wasip1 GOARCH=wasm go build -o widget.wasm .
 package main
@@ -9,39 +9,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 	"unsafe"
 )
-
-func main() {}
-
-// ---- WASM memory protocol -----------------------------------------------
-
-var outBuf [2 << 20]byte // 2 MB output buffer
-var outLen int32
-
-func setOutput(s string) {
-	n := copy(outBuf[:], s)
-	outLen = int32(n)
-}
-
-//go:wasmexport get_output_ptr
-func getOutputPtr() int32 { return int32(uintptr(unsafe.Pointer(&outBuf[0]))) }
-
-//go:wasmexport get_output_len
-func getOutputLen() int32 { return outLen }
-
-var allocBuf []byte
-
-//go:wasmexport alloc
-func alloc(size uint32) uint32 {
-	if uint32(cap(allocBuf)) < size {
-		allocBuf = make([]byte, size)
-	}
-	allocBuf = allocBuf[:size]
-	return uint32(uintptr(unsafe.Pointer(&allocBuf[0])))
-}
 
 // ---- host functions -------------------------------------------------------
 
@@ -69,24 +41,6 @@ func httpPostAuth(rawURL, body, auth string) (string, bool) {
 	return string(httpBuf[:n]), true
 }
 
-// ---- module metadata ------------------------------------------------------
-
-//go:wasmexport module_name
-func moduleName() int32 {
-	setOutput("GitHub Actions")
-	return 0
-}
-
-//go:wasmexport config_schema
-func configSchema() int32 {
-	setOutput(`[
-  {"key":"github_token","label":"GitHub Token","type":"text","required":true,"default":"","placeholder":"ghp_..."},
-  {"key":"repos","label":"Repositorios (uno por línea, owner/repo)","type":"textarea","required":true,"default":"","placeholder":"Fiambre/laladashboard\nSelknam-Tech/Libra"},
-  {"key":"poll_seconds","label":"Intervalo (segundos)","type":"number","default":"300"}
-]`)
-	return 0
-}
-
 // ---- GraphQL types --------------------------------------------------------
 
 type gqlResponse struct {
@@ -97,7 +51,7 @@ type gqlResponse struct {
 }
 
 type repoData struct {
-	NameWithOwner  string `json:"nameWithOwner"`
+	NameWithOwner    string `json:"nameWithOwner"`
 	DefaultBranchRef *struct {
 		Target *struct {
 			CheckSuites *struct {
@@ -122,10 +76,9 @@ type checkSuiteNode struct {
 type repoStatus struct {
 	owner        string
 	repo         string
-	conclusion   string // SUCCESS, FAILURE, IN_PROGRESS, NEUTRAL, SKIPPED, ""
+	conclusion   string
 	workflowName string
 	updatedAt    time.Time
-	url          string
 }
 
 // ---- helpers ---------------------------------------------------------------
@@ -145,7 +98,7 @@ func relTime(t time.Time) string {
 	d := time.Since(t)
 	switch {
 	case d < time.Minute:
-		return "just now"
+		return "ahora"
 	case d < time.Hour:
 		return fmt.Sprintf("%dm", int(d.Minutes()))
 	case d < 24*time.Hour:
@@ -164,35 +117,27 @@ func statusIcon(conclusion, status string) (icon, class string) {
 		return "✓", "gha-ok"
 	case "FAILURE", "TIMED_OUT", "STARTUP_FAILURE":
 		return "✗", "gha-fail"
-	case "CANCELLED", "SKIPPED", "NEUTRAL", "ACTION_REQUIRED":
-		return "—", "gha-skip"
 	default:
-		return "·", "gha-skip"
+		return "—", "gha-skip"
 	}
 }
 
-// ---- render ---------------------------------------------------------------
+// ---- main -----------------------------------------------------------------
 
-//go:wasmexport render
-func render(cfgPtr, cfgLen uint32) int32 {
-	cfgBytes := make([]byte, cfgLen)
-	for i := uint32(0); i < cfgLen; i++ {
-		cfgBytes[i] = *(*byte)(unsafe.Pointer(uintptr(cfgPtr) + uintptr(i)))
-	}
-
+func main() {
 	var settings map[string]string
-	json.Unmarshal(cfgBytes, &settings)
+	json.NewDecoder(os.Stdin).Decode(&settings)
 
 	token := strings.TrimSpace(settings["github_token"])
 	if token == "" {
-		setOutput(`<div class="gha-error">Token de GitHub no configurado</div>` + ghaCSS)
-		return 0
+		fmt.Print(`<div class="gha-error">Token de GitHub no configurado</div>` + ghaCSS)
+		return
 	}
 
 	reposRaw := strings.TrimSpace(settings["repos"])
 	if reposRaw == "" {
-		setOutput(`<div class="gha-error">No hay repositorios configurados</div>` + ghaCSS)
-		return 0
+		fmt.Print(`<div class="gha-error">No hay repositorios configurados</div>` + ghaCSS)
+		return
 	}
 
 	type repoRef struct{ owner, name string }
@@ -208,8 +153,8 @@ func render(cfgPtr, cfgLen uint32) int32 {
 		}
 	}
 	if len(repos) == 0 {
-		setOutput(`<div class="gha-error">Formato inválido. Use: owner/repo</div>` + ghaCSS)
-		return 0
+		fmt.Print(`<div class="gha-error">Formato inválido. Use: owner/repo</div>` + ghaCSS)
+		return
 	}
 
 	// Build GraphQL query with repo aliases
@@ -229,22 +174,20 @@ func render(cfgPtr, cfgLen uint32) int32 {
 	qb.WriteString("}")
 
 	queryJSON, _ := json.Marshal(map[string]string{"query": qb.String()})
-	body := string(queryJSON)
-
-	respStr, ok := httpPostAuth("https://api.github.com/graphql", body, token)
+	respStr, ok := httpPostAuth("https://api.github.com/graphql", string(queryJSON), token)
 	if !ok {
-		setOutput(`<div class="gha-error">Error conectando a GitHub API</div>` + ghaCSS)
-		return 0
+		fmt.Print(`<div class="gha-error">Error conectando a GitHub API</div>` + ghaCSS)
+		return
 	}
 
 	var gqlResp gqlResponse
 	if err := json.Unmarshal([]byte(respStr), &gqlResp); err != nil {
-		setOutput(`<div class="gha-error">Respuesta GraphQL inválida</div>` + ghaCSS)
-		return 0
+		fmt.Print(`<div class="gha-error">Respuesta GraphQL inválida</div>` + ghaCSS)
+		return
 	}
 	if len(gqlResp.Errors) > 0 {
-		setOutput(`<div class="gha-error">` + esc(gqlResp.Errors[0].Message) + `</div>` + ghaCSS)
-		return 0
+		fmt.Print(`<div class="gha-error">` + esc(gqlResp.Errors[0].Message) + `</div>` + ghaCSS)
+		return
 	}
 
 	// Parse results
@@ -267,7 +210,6 @@ func render(cfgPtr, cfgLen uint32) int32 {
 		}
 
 		rs := repoStatus{owner: owner, repo: nwo}
-
 		if rd.DefaultBranchRef != nil &&
 			rd.DefaultBranchRef.Target != nil &&
 			rd.DefaultBranchRef.Target.CheckSuites != nil &&
@@ -280,11 +222,8 @@ func render(cfgPtr, cfgLen uint32) int32 {
 			if node.UpdatedAt != "" {
 				rs.updatedAt, _ = time.Parse(time.RFC3339, node.UpdatedAt)
 			}
-			if node.WorkflowRun != nil {
-				rs.url = node.WorkflowRun.URL
-				if node.WorkflowRun.Workflow != nil {
-					rs.workflowName = node.WorkflowRun.Workflow.Name
-				}
+			if node.WorkflowRun != nil && node.WorkflowRun.Workflow != nil {
+				rs.workflowName = node.WorkflowRun.Workflow.Name
 			}
 		}
 		statuses = append(statuses, rs)
@@ -333,8 +272,7 @@ func render(cfgPtr, cfgLen uint32) int32 {
 
 	sb.WriteString(`</div>`)
 	sb.WriteString(ghaCSS)
-	setOutput(sb.String())
-	return 0
+	fmt.Print(sb.String())
 }
 
 const ghaCSS = `<style>

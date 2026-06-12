@@ -1,7 +1,7 @@
 //go:build wasip1
 
 // Server Monitor module for LalaDashboard.
-// Performs HTTP HEAD checks on configured URLs and displays latency with a color semaphore.
+// Reads config JSON from stdin, writes rendered HTML to stdout.
 //
 // Compile: GOOS=wasip1 GOARCH=wasm go build -o widget.wasm .
 package main
@@ -9,42 +9,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"unsafe"
 )
 
-func main() {}
-
-// ---- WASM memory protocol -----------------------------------------------
-
-var outBuf [1 << 20]byte // 1 MB output buffer
-var outLen int32
-
-func setOutput(s string) {
-	n := copy(outBuf[:], s)
-	outLen = int32(n)
-}
-
-//go:wasmexport get_output_ptr
-func getOutputPtr() int32 { return int32(uintptr(unsafe.Pointer(&outBuf[0]))) }
-
-//go:wasmexport get_output_len
-func getOutputLen() int32 { return outLen }
-
-var allocBuf []byte
-
-//go:wasmexport alloc
-func alloc(size uint32) uint32 {
-	if uint32(cap(allocBuf)) < size {
-		allocBuf = make([]byte, size)
-	}
-	allocBuf = allocBuf[:size]
-	return uint32(uintptr(unsafe.Pointer(&allocBuf[0])))
-}
-
 // ---- host functions -------------------------------------------------------
 
-// http_check makes a HEAD request and returns latency in ms (0 = down/timeout).
 //go:wasmimport env http_check
 func hostHTTPCheck(urlPtr, urlLen uint32) uint32
 
@@ -57,23 +28,6 @@ func httpCheck(rawURL string) uint32 {
 		uint32(uintptr(unsafe.Pointer(&b[0]))),
 		uint32(len(b)),
 	)
-}
-
-// ---- module metadata ------------------------------------------------------
-
-//go:wasmexport module_name
-func moduleName() int32 {
-	setOutput("Server Monitor")
-	return 0
-}
-
-//go:wasmexport config_schema
-func configSchema() int32 {
-	setOutput(`[
-  {"key":"servers","label":"Servidores (nombre|url, uno por línea)","type":"textarea","required":true,"default":"","placeholder":"Urek|https://urek.fiambre.dev\nKhun|https://khun.example.com"},
-  {"key":"poll_seconds","label":"Intervalo (segundos)","type":"number","default":"30"}
-]`)
-	return 0
 }
 
 // ---- helpers ---------------------------------------------------------------
@@ -113,22 +67,16 @@ func barColor(rtt uint32) string {
 	return "#facc15"
 }
 
-// ---- render ---------------------------------------------------------------
+// ---- main -----------------------------------------------------------------
 
-//go:wasmexport render
-func render(cfgPtr, cfgLen uint32) int32 {
-	cfgBytes := make([]byte, cfgLen)
-	for i := uint32(0); i < cfgLen; i++ {
-		cfgBytes[i] = *(*byte)(unsafe.Pointer(uintptr(cfgPtr) + uintptr(i)))
-	}
-
+func main() {
 	var settings map[string]string
-	json.Unmarshal(cfgBytes, &settings)
+	json.NewDecoder(os.Stdin).Decode(&settings)
 
 	serversRaw := strings.TrimSpace(settings["servers"])
 	if serversRaw == "" {
-		setOutput(`<div class="sm-empty">Sin servidores configurados</div>` + smCSS)
-		return 0
+		fmt.Print(`<div class="sm-empty">Sin servidores configurados</div>` + smCSS)
+		return
 	}
 
 	type srv struct{ name, url string }
@@ -150,8 +98,8 @@ func render(cfgPtr, cfgLen uint32) int32 {
 	}
 
 	if len(servers) == 0 {
-		setOutput(`<div class="sm-empty">Sin servidores configurados</div>` + smCSS)
-		return 0
+		fmt.Print(`<div class="sm-empty">Sin servidores configurados</div>` + smCSS)
+		return
 	}
 
 	var sb strings.Builder
@@ -181,8 +129,7 @@ func render(cfgPtr, cfgLen uint32) int32 {
 
 	sb.WriteString(`</div>`)
 	sb.WriteString(smCSS)
-	setOutput(sb.String())
-	return 0
+	fmt.Print(sb.String())
 }
 
 const smCSS = `<style>

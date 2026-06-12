@@ -6,5 +6,9 @@
   "description": "Muestra CPU load, RAM y uptime de servidores con node_exporter. Indica OFFLINE si no responde.",
   "wasm": "widget.wasm",
   "min_core_version": "1.0.0",
-  "tags": ["monitoring", "prometheus", "infrastructure"]
+  "tags": ["monitoring", "prometheus", "infrastructure"],
+  "schema": [
+    {"key": "servers", "label": "Servidores (nombre|url, separados por coma)", "type": "text", "required": true, "default": "", "placeholder": "web1|http://192.168.1.10:9100,db1|http://192.168.1.11:9100"},
+    {"key": "poll_seconds", "label": "Intervalo (segundos)", "type": "number", "default": "30"}
+  ]
 }

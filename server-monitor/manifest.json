@@ -6,5 +6,9 @@
   "description": "Latencia y disponibilidad de URLs HTTP con semáforo visual",
   "wasm": "widget.wasm",
   "min_core_version": "1.0.0",
-  "tags": ["monitoring", "http", "infrastructure"]
+  "tags": ["monitoring", "http", "infrastructure"],
+  "schema": [
+    {"key": "servers", "label": "Servidores (nombre|url, uno por línea)", "type": "textarea", "required": true, "default": "", "placeholder": "Urek|https://urek.fiambre.dev\nKhun|https://khun.example.com"},
+    {"key": "poll_seconds", "label": "Intervalo (segundos)", "type": "number", "default": "30"}
+  ]
 }
