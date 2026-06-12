@@ -28,13 +28,13 @@ func setOutput(s string) {
 	outLen = int32(n)
 }
 
-//export get_output_ptr
+//go:wasmexport get_output_ptr
 func getOutputPtr() int32 { return int32(uintptr(unsafe.Pointer(&outBuf[0]))) }
 
-//export get_output_len
+//go:wasmexport get_output_len
 func getOutputLen() int32 { return outLen }
 
-//export alloc
+//go:wasmexport alloc
 func alloc(size uint32) uint32 {
 	b := make([]byte, size)
 	return uint32(uintptr(unsafe.Pointer(&b[0])))
@@ -65,13 +65,13 @@ func httpGet(url string) (string, bool) {
 
 // ---- module metadata ------------------------------------------------------
 
-//export module_name
+//go:wasmexport module_name
 func moduleName() int32 {
 	setOutput("Node Exporter")
 	return 0
 }
 
-//export config_schema
+//go:wasmexport config_schema
 func configSchema() int32 {
 	setOutput(`[
   {"key":"servers","label":"Servidores (nombre|url separados por coma)","type":"text","required":true,
@@ -159,7 +159,7 @@ func esc(s string) string {
 
 // ---- render ---------------------------------------------------------------
 
-//export render
+//go:wasmexport render
 func render(cfgPtr, cfgLen uint32) int32 {
 	cfgBytes := make([]byte, cfgLen)
 	for i := uint32(0); i < cfgLen; i++ {

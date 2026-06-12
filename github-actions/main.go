@@ -26,15 +26,15 @@ func setOutput(s string) {
 	outLen = int32(n)
 }
 
-//export get_output_ptr
+//go:wasmexport get_output_ptr
 func getOutputPtr() int32 { return int32(uintptr(unsafe.Pointer(&outBuf[0]))) }
 
-//export get_output_len
+//go:wasmexport get_output_len
 func getOutputLen() int32 { return outLen }
 
 var allocBuf []byte
 
-//export alloc
+//go:wasmexport alloc
 func alloc(size uint32) uint32 {
 	if uint32(cap(allocBuf)) < size {
 		allocBuf = make([]byte, size)
@@ -71,13 +71,13 @@ func httpPostAuth(rawURL, body, auth string) (string, bool) {
 
 // ---- module metadata ------------------------------------------------------
 
-//export module_name
+//go:wasmexport module_name
 func moduleName() int32 {
 	setOutput("GitHub Actions")
 	return 0
 }
 
-//export config_schema
+//go:wasmexport config_schema
 func configSchema() int32 {
 	setOutput(`[
   {"key":"github_token","label":"GitHub Token","type":"text","required":true,"default":"","placeholder":"ghp_..."},
@@ -173,7 +173,7 @@ func statusIcon(conclusion, status string) (icon, class string) {
 
 // ---- render ---------------------------------------------------------------
 
-//export render
+//go:wasmexport render
 func render(cfgPtr, cfgLen uint32) int32 {
 	cfgBytes := make([]byte, cfgLen)
 	for i := uint32(0); i < cfgLen; i++ {
