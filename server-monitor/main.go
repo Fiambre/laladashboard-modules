@@ -70,7 +70,7 @@ func moduleName() int32 {
 //export config_schema
 func configSchema() int32 {
 	setOutput(`[
-  {"key":"servers","label":"Servidores (nombre|url, uno por línea)","type":"text","required":true,"default":"","placeholder":"Urek|https://urek.fiambre.dev\nKhun|https://khun.example.com"},
+  {"key":"servers","label":"Servidores (nombre|url, uno por línea)","type":"textarea","required":true,"default":"","placeholder":"Urek|https://urek.fiambre.dev\nKhun|https://khun.example.com"},
   {"key":"poll_seconds","label":"Intervalo (segundos)","type":"number","default":"30"}
 ]`)
 	return 0

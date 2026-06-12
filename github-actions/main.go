@@ -81,7 +81,7 @@ func moduleName() int32 {
 func configSchema() int32 {
 	setOutput(`[
   {"key":"github_token","label":"GitHub Token","type":"text","required":true,"default":"","placeholder":"ghp_..."},
-  {"key":"repos","label":"Repositorios (uno por línea, owner/repo)","type":"text","required":true,"default":"","placeholder":"Fiambre/laladashboard\nSelknam-Tech/Libra"},
+  {"key":"repos","label":"Repositorios (uno por línea, owner/repo)","type":"textarea","required":true,"default":"","placeholder":"Fiambre/laladashboard\nSelknam-Tech/Libra"},
   {"key":"poll_seconds","label":"Intervalo (segundos)","type":"number","default":"300"}
 ]`)
 	return 0
