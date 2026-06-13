@@ -59,6 +59,20 @@ func parseScalar(body, name string) (float64, bool) {
 	return 0, false
 }
 
+// countCPUs counts logical CPUs by counting node_cpu_seconds_total{mode="idle"} entries.
+func countCPUs(body string) int {
+	n := 0
+	for _, line := range strings.Split(body, "\n") {
+		if strings.HasPrefix(line, "node_cpu_seconds_total{") && strings.Contains(line, `mode="idle"`) {
+			n++
+		}
+	}
+	if n == 0 {
+		return 1
+	}
+	return n
+}
+
 // ---- helpers ---------------------------------------------------------------
 
 func fmtBytes(bytes float64) string {
@@ -96,14 +110,6 @@ func barColor(pct float64) string {
 	return "#4ade80"
 }
 
-func loadColor(load1 float64) string {
-	if load1 >= 4 {
-		return "#f87171"
-	} else if load1 >= 2 {
-		return "#facc15"
-	}
-	return "#4ade80"
-}
 
 func esc(s string) string {
 	s = strings.ReplaceAll(s, "&", "&amp;")
@@ -159,8 +165,6 @@ func main() {
 		}
 
 		load1, hasLoad := parseScalar(body, "node_load1")
-		load5, _ := parseScalar(body, "node_load5")
-		load15, _ := parseScalar(body, "node_load15")
 		memTotal, hasRAM := parseScalar(body, "node_memory_MemTotal_bytes")
 		memAvail, _ := parseScalar(body, "node_memory_MemAvailable_bytes")
 		bootTime, hasUptime := parseScalar(body, "node_boot_time_seconds")
@@ -173,13 +177,18 @@ func main() {
 		sb.WriteString(`<div class="ne-stats">`)
 
 		if hasLoad {
+			cpus := countCPUs(body)
+			cpuPct := load1 / float64(cpus) * 100
+			if cpuPct > 100 {
+				cpuPct = 100
+			}
 			sb.WriteString(fmt.Sprintf(
 				`<div class="ne-row">`+
-					`<span class="ne-lbl">Load</span>`+
-					`<span class="ne-val" style="color:%s">%.2f</span>`+
-					`<span class="ne-sub">%.2f&nbsp;·&nbsp;%.2f</span>`+
-					`</div>`,
-				loadColor(load1), load1, load5, load15,
+					`<span class="ne-lbl">CPU</span>`+
+					`<span class="ne-val" style="color:%s">%.0f%%</span>`+
+					`</div>`+
+					`<div class="ne-bar"><div class="ne-fill" style="width:%.0f%%;background:%s"></div></div>`,
+				barColor(cpuPct), cpuPct, cpuPct, barColor(cpuPct),
 			))
 		}
 
