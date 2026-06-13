@@ -10,6 +10,7 @@
   "schema": [
     {"key": "github_token", "label": "GitHub Token (PAT)", "type": "text", "required": true, "default": "", "placeholder": "ghp_..."},
     {"key": "repos", "label": "Repositorios (owner/repo, uno por línea)", "type": "textarea", "required": true, "default": "", "placeholder": "Fiambre/laladashboard\nSelknam-Tech/Libra"},
+    {"key": "max_runs", "label": "Últimas ejecuciones a mostrar", "type": "number", "default": "20"},
     {"key": "poll_seconds", "label": "Intervalo (segundos)", "type": "number", "default": "300"}
   ]
 }

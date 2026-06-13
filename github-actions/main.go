@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -62,23 +64,22 @@ type repoData struct {
 }
 
 type checkSuiteNode struct {
-	Status     string `json:"status"`
-	Conclusion string `json:"conclusion"`
-	UpdatedAt  string `json:"updatedAt"`
+	Status      string `json:"status"`
+	Conclusion  string `json:"conclusion"`
+	UpdatedAt   string `json:"updatedAt"`
 	WorkflowRun *struct {
 		Workflow *struct {
 			Name string `json:"name"`
 		} `json:"workflow"`
-		URL string `json:"url"`
 	} `json:"workflowRun"`
 }
 
-type repoStatus struct {
-	owner        string
-	repo         string
-	conclusion   string
-	workflowName string
-	updatedAt    time.Time
+type runEntry struct {
+	nameWithOwner string
+	conclusion    string
+	status        string
+	workflowName  string
+	updatedAt     time.Time
 }
 
 // ---- helpers ---------------------------------------------------------------
@@ -91,11 +92,25 @@ func esc(s string) string {
 	return s
 }
 
+func parseTime(s string) time.Time {
+	if s == "" {
+		return time.Time{}
+	}
+	t, err := time.Parse(time.RFC3339Nano, s)
+	if err != nil {
+		t, _ = time.Parse(time.RFC3339, s)
+	}
+	return t
+}
+
 func relTime(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
 	d := time.Since(t)
+	if d < 0 {
+		d = -d
+	}
 	switch {
 	case d < time.Minute:
 		return "ahora"
@@ -117,6 +132,8 @@ func statusIcon(conclusion, status string) (icon, class string) {
 		return "✓", "gha-ok"
 	case "FAILURE", "TIMED_OUT", "STARTUP_FAILURE":
 		return "✗", "gha-fail"
+	case "CANCELLED":
+		return "✕", "gha-cancel"
 	default:
 		return "—", "gha-skip"
 	}
@@ -140,6 +157,11 @@ func main() {
 		return
 	}
 
+	maxRuns := 20
+	if v, _ := strconv.Atoi(strings.TrimSpace(settings["max_runs"])); v > 0 {
+		maxRuns = v
+	}
+
 	type repoRef struct{ owner, name string }
 	var repos []repoRef
 	for _, line := range strings.Split(reposRaw, "\n") {
@@ -157,7 +179,7 @@ func main() {
 		return
 	}
 
-	// Build GraphQL query with repo aliases
+	// Build single GraphQL query with all repos aliased
 	var qb strings.Builder
 	qb.WriteString("query {")
 	for i, r := range repos {
@@ -165,9 +187,9 @@ func main() {
 			`r%d: repository(owner: %q, name: %q) {`+
 				`nameWithOwner `+
 				`defaultBranchRef { target { ... on Commit { `+
-				`checkSuites(last: 1, filterBy: {appId: 15368}) {`+
+				`checkSuites(last: 5, filterBy: {appId: 15368}) {`+
 				`nodes { status conclusion updatedAt `+
-				`workflowRun { workflow { name } url } }}}}} }`,
+				`workflowRun { workflow { name } } }}}}} }`,
 			i, r.owner, r.name,
 		))
 	}
@@ -190,8 +212,8 @@ func main() {
 		return
 	}
 
-	// Parse results
-	var statuses []repoStatus
+	// Collect all run entries from all repos into a flat list
+	var entries []runEntry
 	for i := range repos {
 		alias := fmt.Sprintf("r%d", i)
 		raw, ok := gqlResp.Data[alias]
@@ -202,72 +224,50 @@ func main() {
 		if err := json.Unmarshal(raw, &rd); err != nil {
 			continue
 		}
-		nwo := rd.NameWithOwner
-		parts := strings.SplitN(nwo, "/", 2)
-		owner := ""
-		if len(parts) == 2 {
-			owner = parts[0]
+		if rd.DefaultBranchRef == nil ||
+			rd.DefaultBranchRef.Target == nil ||
+			rd.DefaultBranchRef.Target.CheckSuites == nil {
+			continue
 		}
-
-		rs := repoStatus{owner: owner, repo: nwo}
-		if rd.DefaultBranchRef != nil &&
-			rd.DefaultBranchRef.Target != nil &&
-			rd.DefaultBranchRef.Target.CheckSuites != nil &&
-			len(rd.DefaultBranchRef.Target.CheckSuites.Nodes) > 0 {
-			node := rd.DefaultBranchRef.Target.CheckSuites.Nodes[0]
-			rs.conclusion = node.Conclusion
-			if rs.conclusion == "" {
-				rs.conclusion = node.Status
-			}
-			if node.UpdatedAt != "" {
-				rs.updatedAt, _ = time.Parse(time.RFC3339, node.UpdatedAt)
+		for _, node := range rd.DefaultBranchRef.Target.CheckSuites.Nodes {
+			e := runEntry{
+				nameWithOwner: rd.NameWithOwner,
+				conclusion:    node.Conclusion,
+				status:        node.Status,
+				updatedAt:     parseTime(node.UpdatedAt),
 			}
 			if node.WorkflowRun != nil && node.WorkflowRun.Workflow != nil {
-				rs.workflowName = node.WorkflowRun.Workflow.Name
+				e.workflowName = node.WorkflowRun.Workflow.Name
 			}
+			entries = append(entries, e)
 		}
-		statuses = append(statuses, rs)
 	}
 
-	// Group by org
-	type orgGroup struct {
-		org      string
-		statuses []repoStatus
-	}
-	seen := map[string]int{}
-	var groups []orgGroup
-	for _, s := range statuses {
-		if idx, ok := seen[s.owner]; ok {
-			groups[idx].statuses = append(groups[idx].statuses, s)
-		} else {
-			seen[s.owner] = len(groups)
-			groups = append(groups, orgGroup{org: s.owner, statuses: []repoStatus{s}})
-		}
+	// Sort by most recent first, limit to maxRuns
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].updatedAt.After(entries[j].updatedAt)
+	})
+	if len(entries) > maxRuns {
+		entries = entries[:maxRuns]
 	}
 
 	var sb strings.Builder
 	sb.WriteString(`<div class="gha-widget">`)
 
-	multiOrg := len(groups) > 1
-	for _, g := range groups {
-		if multiOrg {
-			sb.WriteString(`<div class="gha-org">` + esc(g.org) + `</div>`)
-		}
-		for _, s := range g.statuses {
-			icon, cls := statusIcon(s.conclusion, s.conclusion)
-			repoShort := s.repo
-			if i := strings.Index(repoShort, "/"); i >= 0 {
-				repoShort = repoShort[i+1:]
-			}
-			age := relTime(s.updatedAt)
+	for _, e := range entries {
+		icon, cls := statusIcon(e.conclusion, e.status)
+		age := relTime(e.updatedAt)
 
-			sb.WriteString(`<div class="gha-row">`)
-			sb.WriteString(fmt.Sprintf(`<span class="gha-icon %s">%s</span>`, cls, icon))
-			sb.WriteString(fmt.Sprintf(`<span class="gha-repo" title="%s">%s</span>`, esc(s.repo), esc(repoShort)))
-			sb.WriteString(fmt.Sprintf(`<span class="gha-wf">%s</span>`, esc(s.workflowName)))
-			sb.WriteString(fmt.Sprintf(`<span class="gha-age">%s</span>`, esc(age)))
-			sb.WriteString(`</div>`)
-		}
+		sb.WriteString(`<div class="gha-row">`)
+		sb.WriteString(fmt.Sprintf(`<span class="gha-icon %s">%s</span>`, cls, icon))
+		sb.WriteString(fmt.Sprintf(`<span class="gha-repo" title="%s">%s</span>`, esc(e.nameWithOwner), esc(e.nameWithOwner)))
+		sb.WriteString(fmt.Sprintf(`<span class="gha-wf">%s</span>`, esc(e.workflowName)))
+		sb.WriteString(fmt.Sprintf(`<span class="gha-age">%s</span>`, esc(age)))
+		sb.WriteString(`</div>`)
+	}
+
+	if len(entries) == 0 {
+		sb.WriteString(`<div class="gha-empty">Sin ejecuciones recientes</div>`)
 	}
 
 	sb.WriteString(`</div>`)
@@ -277,12 +277,13 @@ func main() {
 
 const ghaCSS = `<style>
 .gha-widget{display:flex;flex-direction:column;gap:.18rem}
-.gha-error{font-size:.78rem;color:#f87171;padding:.4rem 0}
-.gha-org{font-size:.58rem;color:rgba(255,255,255,.32);letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,.07);margin:.45rem 0 .2rem;padding-bottom:.15rem}
+.gha-error,.gha-empty{font-size:.78rem;color:rgba(255,255,255,.4);padding:.4rem 0}
+.gha-error{color:#f87171}
 .gha-row{display:grid;grid-template-columns:14px 1fr 1fr auto;align-items:center;gap:.45rem;padding:.08rem 0}
 .gha-icon{font-size:.75rem;font-weight:700;text-align:center;line-height:1}
 .gha-ok{color:#4ade80}
 .gha-fail{color:#f87171}
+.gha-cancel{color:#fb923c}
 .gha-run{color:#facc15;display:inline-block;animation:gha-spin 1.8s linear infinite}
 .gha-skip{color:rgba(255,255,255,.28)}
 @keyframes gha-spin{to{transform:rotate(360deg)}}
