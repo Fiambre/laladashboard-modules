@@ -181,7 +181,7 @@ func main() {
 
 	// Build single GraphQL query with all repos aliased
 	var qb strings.Builder
-	qb.WriteString("query {")
+	qb.WriteString("query { rateLimit { cost remaining }")
 	for i, r := range repos {
 		qb.WriteString(fmt.Sprintf(
 			`r%d: repository(owner: %q, name: %q) {`+
@@ -207,9 +207,26 @@ func main() {
 		fmt.Print(`<div class="gha-error">Respuesta GraphQL inválida</div>` + ghaCSS)
 		return
 	}
-	if len(gqlResp.Errors) > 0 {
-		fmt.Print(`<div class="gha-error">` + esc(gqlResp.Errors[0].Message) + `</div>` + ghaCSS)
+	// Log errors but don't abort — GraphQL returns partial data even when some repos fail
+	for _, e := range gqlResp.Errors {
+		fmt.Fprintf(os.Stderr, "[github-actions] graphql error: %s\n", e.Message)
+	}
+	if len(gqlResp.Data) == 0 {
+		msg := "Error conectando a GitHub API"
+		if len(gqlResp.Errors) > 0 {
+			msg = gqlResp.Errors[0].Message
+		}
+		fmt.Print(`<div class="gha-error">` + esc(msg) + `</div>` + ghaCSS)
 		return
+	}
+	if raw, ok := gqlResp.Data["rateLimit"]; ok {
+		var rl struct {
+			Cost      int `json:"cost"`
+			Remaining int `json:"remaining"`
+		}
+		if err := json.Unmarshal(raw, &rl); err == nil {
+			fmt.Fprintf(os.Stderr, "[github-actions] rateLimit cost=%d remaining=%d\n", rl.Cost, rl.Remaining)
+		}
 	}
 
 	// Collect all run entries from all repos into a flat list
