@@ -66,9 +66,9 @@ type repoData struct {
 type checkSuiteNode struct {
 	Status      string `json:"status"`
 	Conclusion  string `json:"conclusion"`
-	UpdatedAt   string `json:"updatedAt"`
 	WorkflowRun *struct {
-		Workflow *struct {
+		CreatedAt string `json:"createdAt"`
+		Workflow  *struct {
 			Name string `json:"name"`
 		} `json:"workflow"`
 	} `json:"workflowRun"`
@@ -188,8 +188,8 @@ func main() {
 				`nameWithOwner `+
 				`defaultBranchRef { target { ... on Commit { `+
 				`checkSuites(last: 5, filterBy: {appId: 15368}) {`+
-				`nodes { status conclusion updatedAt `+
-				`workflowRun { workflow { name } } }}}}} }`,
+				`nodes { status conclusion `+
+				`workflowRun { createdAt workflow { name } } }}}}} }`,
 			i, r.owner, r.name,
 		))
 	}
@@ -230,14 +230,20 @@ func main() {
 			continue
 		}
 		for _, node := range rd.DefaultBranchRef.Target.CheckSuites.Nodes {
+			// Skip nodes with no associated workflow run (no timestamp or name)
+			if node.WorkflowRun == nil || node.WorkflowRun.Workflow == nil {
+				continue
+			}
+			t := parseTime(node.WorkflowRun.CreatedAt)
+			if t.IsZero() {
+				continue
+			}
 			e := runEntry{
 				nameWithOwner: rd.NameWithOwner,
 				conclusion:    node.Conclusion,
 				status:        node.Status,
-				updatedAt:     parseTime(node.UpdatedAt),
-			}
-			if node.WorkflowRun != nil && node.WorkflowRun.Workflow != nil {
-				e.workflowName = node.WorkflowRun.Workflow.Name
+				workflowName:  node.WorkflowRun.Workflow.Name,
+				updatedAt:     t,
 			}
 			entries = append(entries, e)
 		}
