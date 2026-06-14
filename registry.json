@@ -44,6 +44,17 @@
       "wasm_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/server-monitor/widget.wasm",
       "manifest_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/server-monitor/manifest.json",
       "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/server-monitor"
+    },
+    {
+      "id": "twitter-trends",
+      "name": "Twitter Trends",
+      "description": "Top trending topics de Twitter/X para un país, vía trends24.in",
+      "author": "Fiambre",
+      "version": "1.0.0",
+      "tags": ["social", "twitter", "trends"],
+      "wasm_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/twitter-trends/widget.wasm",
+      "manifest_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/twitter-trends/manifest.json",
+      "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/twitter-trends"
     }
   ]
 }

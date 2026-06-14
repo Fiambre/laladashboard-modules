@@ -1,0 +1,15 @@
+{
+  "id": "twitter-trends",
+  "name": "Twitter Trends",
+  "version": "1.0.0",
+  "author": "Fiambre",
+  "description": "Top trending topics de Twitter/X para un país, vía trends24.in",
+  "wasm": "widget.wasm",
+  "min_core_version": "1.0.0",
+  "tags": ["social", "twitter", "trends"],
+  "schema": [
+    {"key": "country",      "label": "País (slug)",           "type": "text",   "default": "chile",  "placeholder": "chile, argentina, spain…"},
+    {"key": "max_items",    "label": "Máximo de tendencias",  "type": "number", "default": "15"},
+    {"key": "poll_seconds", "label": "Actualizar cada (seg)", "type": "number", "default": "300"}
+  ]
+}
