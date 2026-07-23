@@ -46,6 +46,17 @@
       "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/server-monitor"
     },
     {
+      "id": "claude-rate-limit",
+      "name": "Claude Rate Limit",
+      "description": "Uso del rate limit de Claude (ventanas de 5 horas y 7 días) vía webhook n8n",
+      "author": "Fiambre",
+      "version": "1.0.0",
+      "tags": ["claude", "monitoring", "api"],
+      "wasm_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/claude-rate-limit/widget.wasm",
+      "manifest_url": "https://cdn.jsdelivr.net/gh/Fiambre/laladashboard-modules@main/claude-rate-limit/manifest.json",
+      "source_url": "https://github.com/Fiambre/laladashboard-modules/tree/main/claude-rate-limit"
+    },
+    {
       "id": "twitter-trends",
       "name": "Twitter Trends",
       "description": "Top trending topics de Twitter/X para un país, vía trends24.in",
