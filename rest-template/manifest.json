@@ -12,7 +12,7 @@
     {"key": "http_method", "label": "Método HTTP", "type": "select", "options": ["GET", "POST"], "default": "GET", "required": false},
     {"key": "request_body", "label": "Body (JSON, solo si POST)", "type": "textarea", "required": false, "default": "", "placeholder": "{\"key\":\"value\"}"},
     {"key": "auth_token", "label": "Token Bearer (opcional)", "type": "text", "required": false, "default": "", "placeholder": "sk-..."},
-    {"key": "template", "label": "Plantilla HTML", "type": "textarea", "required": true, "default": "<div><h3>{{.title}}</h3><p>{{.value}}</p></div>", "placeholder": "Usa {{.campo}}, {{.objeto.subcampo}} o {{range .items}}{{.nombre}}{{end}}"},
+    {"key": "template", "label": "Plantilla HTML", "type": "textarea", "required": true, "default": "<div><h3>{{.title}}</h3><p>{{.value}}</p></div>", "placeholder": "Usa {{.campo}}, {{.objeto.subcampo}}, {{range .items}}{{.nombre}}{{end}} o {{timeUntil .campo_timestamp}} para un countdown a un unix timestamp"},
     {"key": "poll_seconds", "label": "Intervalo (segundos)", "type": "number", "default": "60"}
   ]
 }

@@ -16,6 +16,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 )
 
@@ -137,6 +138,42 @@ func normalizeJSON(v any) any {
 	}
 }
 
+// timeUntil renders the time remaining until a unix timestamp (accepts the
+// string or numeric form normalizeJSON may have produced), for templates
+// that display countdowns to a reset/expiry time returned by the API.
+func timeUntil(v any) string {
+	var ts int64
+	switch t := v.(type) {
+	case string:
+		n, err := strconv.ParseInt(t, 10, 64)
+		if err != nil {
+			return ""
+		}
+		ts = n
+	case float64:
+		ts = int64(t)
+	case int64:
+		ts = t
+	default:
+		return ""
+	}
+
+	sec := ts - time.Now().Unix()
+	if ts <= 0 || sec <= 0 {
+		return "reiniciando…"
+	}
+	d := sec / 86400
+	h := (sec % 86400) / 3600
+	m := (sec % 3600) / 60
+	if d > 0 {
+		return fmt.Sprintf("%dd %dh", d, h)
+	}
+	if h > 0 {
+		return fmt.Sprintf("%dh %dm", h, m)
+	}
+	return fmt.Sprintf("%dm", m)
+}
+
 // ---- main -----------------------------------------------------------------
 
 func main() {
@@ -181,7 +218,10 @@ func main() {
 	}
 	data := normalizeJSON(raw)
 
-	tmpl, err := template.New("w").Option("missingkey=zero").Parse(tmplStr)
+	tmpl, err := template.New("w").
+		Funcs(template.FuncMap{"timeUntil": timeUntil}).
+		Option("missingkey=zero").
+		Parse(tmplStr)
 	if err != nil {
 		fmt.Print(`<div class="rt-error">Error en la plantilla: ` + esc(err.Error()) + `</div>` + rtCSS)
 		return
